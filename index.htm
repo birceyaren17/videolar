@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Sync Player - Dual Story Mode</title>
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    background: linear-gradient(135deg, #422a14 0%, #2e1d0e 100%);
+    color: #dfe6e9;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    align-items: center; 
+    justify-content: flex-start;
+    overflow: hidden;
+  }
+  #sidebar {
+    width: 260px;
+    height: auto;
+    background: #507c68; 
+    margin-left: 40px; 
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    gap: 15px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.05);
+    z-index: 2;
+  }
+
+  h2 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #fff;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    opacity: 0.9;
+    border-bottom: 2px solid rgba(255,255,255,0.2);
+    padding-bottom: 10px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 14px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #fff;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.2); }
+  .btn:active { transform: translateY(0); }
+
+  #rewindBtn, #forwardBtn { background: rgba(0,0,0,0.2); }
+  #startBtn { background: #2ecc71; }
+  #stopBtn { background: #ff7675; }
+
+  .info-text {
+    margin-top: 20px;
+    font-size: 13px;
+    color: #e0ece4;
+    text-align: left;
+    line-height: 1.8;
+    background: rgba(0,0,0,0.15);
+    padding: 15px;
+    border-radius: 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .cmd-key { color: #badc58; font-weight: bold; font-family: monospace; font-size: 14px; }
+  #main-area {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    padding: 40px;
+    box-sizing: border-box;
+  }
+
+  #video-wrap {
+    position: relative;
+    width: 90%;
+    max-width: 1100px;
+    aspect-ratio: 16/9;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+    border-radius: 16px;
+    overflow: hidden;
+    background: #000;
+    border: 4px solid #5a4025; 
+  }
+
+  video {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover; transition: opacity 0.4s ease;
+  }
+  #videoB { opacity: 0; }
+
+  #label {
+    position: absolute; top: 25px; left: 25px;
+    background: rgba(80, 124, 104, 0.9);
+    color: #badc58;
+    padding: 8px 16px; border-radius: 6px;
+    font-size: 15px; font-weight: bold;
+    backdrop-filter: blur(4px);
+    z-index: 10;
+  }
+
+  #subtitle-overlay {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    text-align: center;
+    pointer-events: none;
+    z-index: 20;
+    font-size: 22px; 
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    background: rgba(0, 0, 0, 0.6);
+    padding: 12px 24px;
+    border-radius: 50px;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  #subtitle-overlay.active { 
+    opacity: 1; 
+    transform: translateX(-50%) translateY(0);
+  }
+
+</style>
+</head>
+<body>
+
+  <div id="sidebar">
+    <h2>Kontrol Paneli</h2>
+    
+    
+    <button id="startBtn" class="btn"><span>▶</span> Başlat</button>
+    <button id="stopBtn" class="btn"><span>⏸</span> Duraklat</button>
+
+    <div class="info-text">
+      <span style="display:block;text-align:center;font-weight:bold;margin-bottom:5px;opacity:0.7;">Klavye Kısayolları</span>
+      <span class="cmd-key">Space</span> : Başlat / Durdur<br>
+      <span class="cmd-key">A / B</span> : Kamera Seçimi
+    </div>
+  </div>
+
+  <div id="main-area">
+    <div id="video-wrap">
+        <div id="label">KAMERA A</div>
+        
+        <video id="videoA" src="video1.mp4" loop muted></video>
+        <video id="videoB" src="video2.mp4" loop muted></video>
+        
+        <div id="subtitle-overlay"></div>
+    </div>
+  </div>
+
+<script>
+const A = document.getElementById("videoA");
+const B = document.getElementById("videoB");
+const label = document.getElementById("label");
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const subOverlay = document.getElementById("subtitle-overlay");
+
+let isPlaying = false;
+let currentCam = "A"; 
+const subtitlesA = [
+  { start: 0, end: 6.2, text: "Terliklerimi ve pijamalarımı giyiyorum." },
+  { start: 6.2, end: 13.3, text: "Elektrikli cezvenin tadı evimde içtiğim kahve tadını veremiyor…" },
+  { start: 13.3, end: 29.3, text: "Hayata biraz mola veriyorum." }
+];
+
+const subtitlesB = [
+  { start: 0, end: 6.2, text: "Ayakkabılarımı ve pantolonumu giyiyorum çünkü evime gideceğim." },
+  { start: 6.2, end: 13.3, text: "Evde kahve içmenin tadı başka oluyor" },
+  { start: 13.3, end: 29.3, text: "Günlük ödevlerimi ve araştırmalarımı yapıyorum." }
+];
+function updateSubtitles() {
+  const t = A.currentTime; 
+  const activeList = (currentCam === "A") ? subtitlesA : subtitlesB;
+  const activeSub = activeList.find(sub => t >= sub.start && t < sub.end);
+
+  if (activeSub) {
+    subOverlay.innerText = activeSub.text;
+    subOverlay.classList.add("active");
+  } else {
+    subOverlay.classList.remove("active");
+  }
+}
+A.addEventListener("timeupdate", updateSubtitles);
+
+function playVideos() {
+  if(isPlaying) return;
+  A.play(); B.play();
+  
+  /* if(currentCam === "A") { A.muted = false; B.muted = true; }
+  else { A.muted = true; B.muted = false; }
+  */
+  
+  isPlaying = true;
+  startBtn.style.opacity = "0.5"; stopBtn.style.opacity = "1";
+}
+function pauseVideos() {
+  if(!isPlaying) return;
+  A.pause(); B.pause();
+  isPlaying = false;
+  startBtn.style.opacity = "1"; stopBtn.style.opacity = "0.5";
+}
+
+startBtn.onclick = playVideos;
+stopBtn.onclick = pauseVideos;
+function switchCam(cam) {
+  currentCam = cam;
+  const syncTime = A.currentTime; 
+  if (Math.abs(A.currentTime - B.currentTime) > 0.1) { B.currentTime = syncTime; }
+
+  if (cam === "A") {
+    A.style.opacity = 1; B.style.opacity = 0;
+    // A.muted = false; B.muted = true;
+    label.innerText = "KAMERA A";
+    label.style.color = "#badc58"; 
+  } else {
+    A.style.opacity = 0; B.style.opacity = 1;
+    // A.muted = true; B.muted = false;
+    label.innerText = "KAMERA B";
+    label.style.color = "#ff7675";
+  }
+  
+  updateSubtitles();
+}
+
+
+document.addEventListener("keydown", (e) => {
+  const key = e.key.toLowerCase();
+  if (key === "a") switchCam("A");
+  if (key === "b") switchCam("B");
+  if (e.code === "Space") {
+      e.preventDefault();
+      isPlaying ? pauseVideos() : playVideos();
+  }
+});
+</script>
+
+</body>
+</html>
